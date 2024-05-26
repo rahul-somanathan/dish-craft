@@ -1,0 +1,20 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./src/back-end/Dockerfile
+    image: rre_back_end:latest
+    container_name: rre_back_end_container
+    ports:
+      - 8000:8000
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./src/front-end/Dockerfile
+    image: rre_front_end:latest
+    container_name: rre_front_end_container
+    ports:
+      - 8501:8501
+    volumes:
+      - ./src/front-end:/streamlit_app

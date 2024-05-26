@@ -24,7 +24,7 @@ To install and run the recommendation engine locally, follow these steps:
 2. In your terminal run "docker-compose build" from root directory
 3. Once build succeeds run "docker-compose up"
 4. Follow the [backend API](http://localhost:8000/) 
-5. Follow the [streamlit front end application] (http://localhost:8501/) 
+5. Follow the [streamlit front end application](http://localhost:8501/) 
 6. do run "docker-compose down" to stop the application
 
 ## License

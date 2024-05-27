@@ -51,7 +51,7 @@ def recommend_recipes(user_id: int):
 
 @app.get("/available_users")
 def get_available_users():
-    available_users = combined_df["user_id"].unique().sort_values().tolist()
+    available_users = combined_df["user_id"].unique().tolist()
     return {"user_ids": available_users}
 
 

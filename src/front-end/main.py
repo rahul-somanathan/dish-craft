@@ -2,52 +2,75 @@
 import requests
 import streamlit as st
 
+# Define CSS style for scrollable divs
+scrollable_style = """
+    <style>
+        .scrollable {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+"""
 
+# Function to fetch available users
 def get_available_users():
     response = requests.get('http://backend:8000/available_users')
-    if response.status_code == 200:
-        return response.json()["user_ids"]
-    else:
-        return []
+    return response.json().get("user_ids", [])
 
-
+# Function to fetch user data
 def get_user_data(user_id):
     response = requests.get(f'http://backend:8000/recommend/{user_id}')
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return {"Error": "Error fetching data."}
+    return response.json()
 
-
+# Main function
 def main():
-    st.title("Food.com Recipe Recommendation Engine")
-    st.write("Find the best recipes tailored for you based on your past preferences!")
+    # Add title and description
+    st.title("DishCraft™ by AutoBasket")
+    st.write("Unlock a world of culinary delights tailored just for you!")
+    
+    # Fetch available users
     available_users = get_available_users()
-    if not available_users:
-        st.write("No available users.")
-        return
+    
+    # Show user selection dropdown
     user_id = st.selectbox("Select User ID", available_users)
+    
+    # If no users available, show message and return
+    if not available_users:
+        st.warning("No available users.")
+        return
+    
+    # Button to trigger data fetching
     if st.button("Submit"):
         user_data = get_user_data(user_id)
+        
+        # Check for errors
         if "Error" in user_data:
-            st.write("Error fetching data from the server.")
+            st.error("Error fetching data from the server.")
             return
-        col1, col2 = st.columns(2)
-        col1.subheader(f"Recipes Rated by User {user_id}")
-        past_rated_recipes = user_data.get("past_rated_recipes", [])
-        scrollable_rated_recipes = '<div style="height: 250px; overflow-y: auto;">'
-        for recipe in past_rated_recipes:
-            scrollable_rated_recipes += f"<p>{recipe}</p>"
-        scrollable_rated_recipes += "</div>"
-        col1.write(scrollable_rated_recipes, unsafe_allow_html=True)
-        col2.subheader(f"Recommended Recipes for User {user_id}")
-        recommended_recipes = user_data.get("recommended_recipes", [])
-        scrollable_recommended_recipes = '<div style="height: 250px; overflow-y: auto;">'
-        for recipe in recommended_recipes:
-            scrollable_recommended_recipes += f"<p>{recipe}</p>"
-        scrollable_recommended_recipes += "</div>"
-        col2.write(scrollable_recommended_recipes, unsafe_allow_html=True)
+        
+        # Display past rated recipes
+        with st.expander("Recipes Rated by User"):
+            past_rated_recipes = user_data.get("past_rated_recipes", [])
+            if past_rated_recipes:
+                for recipe in past_rated_recipes:
+                    st.write(f"- {recipe}")
+            else:
+                st.write("No past rated recipes.")
+        
+        # Display recommended recipes
+        with st.expander("Recommended Recipes"):
+            recommended_recipes = user_data.get("recommended_recipes", [])
+            if recommended_recipes:
+                for recipe in recommended_recipes:
+                    st.write(f"- {recipe}")
+            else:
+                st.write("No recommended recipes.")
 
-
+# Run the app
 if __name__ == "__main__":
+    # Add CSS styling
+    st.markdown(scrollable_style, unsafe_allow_html=True)
     main()

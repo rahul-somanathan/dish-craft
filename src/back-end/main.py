@@ -4,16 +4,16 @@ import pandas as pd
 import pickle
 
 # Initialization
-train_df = pd.read_pickle('/app/data/processed/train.pkl')
-test_df = pd.read_pickle('/app/data/processed/test.pkl')
+train_df = pd.read_pickle('/app/data/processed/knn-model/train.pkl')
+test_df = pd.read_pickle('/app/data/processed/knn-model/test.pkl')
 combined_df = pd.concat([train_df, test_df], ignore_index=True)
-with open('/app/data/processed/train_sparse_matrix.pkl', 'rb') as file:
+with open('/app/data/processed/knn-model/train_sparse_matrix.pkl', 'rb') as file:
     train_matrix = pickle.load(file)
-with open('/app/data/processed/user_mapping.pkl', 'rb') as file:
+with open('/app/data/processed/knn-model/user_mapping.pkl', 'rb') as file:
     user_mapping = pickle.load(file)
-with open('/app/data/processed/recipe_mapping.pkl', 'rb') as file:
+with open('/app/data/processed/knn-model/recipe_mapping.pkl', 'rb') as file:
     recipe_mapping = pickle.load(file)
-with open('/app/models/final_model.pkl', 'rb') as file:
+with open('/app/models/knn-model/model_v1.pkl', 'rb') as file:
     knn_model = pickle.load(file)
 app = FastAPI()
 

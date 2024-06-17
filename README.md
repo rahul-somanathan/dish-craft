@@ -27,6 +27,11 @@ To install and run the recommendation engine locally, follow these steps:
 5. Follow the [streamlit front end application](http://localhost:8501/) 
 6. do run "docker-compose down" to stop the application
 
+## Build Commands
+
+RRE React Front End: docker build --build-arg NODE_VERSION=$(node -pe "require('./package.json').engines.node") -t your-image-name .
+
+
 ## License
 Copyright (c) 2024 
 

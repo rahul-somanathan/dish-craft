@@ -3,3 +3,5 @@
 **/__pycache__
 data/raw/RAW_interactions.csv
 data/raw/RAW_recipes.csv
+notebooks/.DS_Store
+notebooks/.DS_Store

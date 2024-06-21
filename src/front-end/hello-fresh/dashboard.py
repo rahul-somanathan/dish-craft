@@ -1,27 +1,15 @@
-
-# Create an interactive web-based data dashboard
-import dash
 import pandas as pd
-from dash import dcc, html
+from dash import Dash, html, dcc, Input, Output, Patch, clientside_callback, callback
 import plotly.express as px
-import plotly.graph_objs as go
-from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
-from sklearn.calibration import LabelEncoder
-from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+from dash.dependencies import Input, Output
+from dash_bootstrap_templates import load_figure_template
+import plotly.io as pio
 
-global user_interaction_df 
-global delivery_preferences_df 
-global recipe_preferences_df 
-global merged_data 
-global corr 
-global favorite_recipes
-global preferred_days 
-global most_requested_recipes 
-
-# Function to load user interaction data
+# Load user interaction data
 def load_user_interaction_data():
-    user_interaction_df = pd.DataFrame({
+    return pd.DataFrame({
         'User ID': [1, 2, 3, 4, 5],
         'Sessions Initiated': [15, 10, 12, 8, 20],
         'Average Time per Session (min)': [12.5, 8.2, 10.6, 15.3, 7.8],
@@ -30,12 +18,10 @@ def load_user_interaction_data():
                              'Chicken Curry, Mushroom Risotto'],
         'Last Purchase': ['2023-07-10', '2023-07-12', '2023-07-11', '2023-07-09', '2023-07-08']
     })
-    return user_interaction_df
 
-# Function to preprocess user interaction data
+# Preprocess user interaction data
 def preprocess_user_interaction_data(user_interaction_df):
     label_encoder = LabelEncoder()
-
     encoded_user_interaction_data = user_interaction_df.copy()
 
     encoded_user_interaction_data['Favorite Recipes'] = label_encoder.fit_transform(encoded_user_interaction_data['Favorite Recipes'])
@@ -44,9 +30,9 @@ def preprocess_user_interaction_data(user_interaction_df):
     
     return encoded_user_interaction_data
 
-# Function to load delivery preferences data
+# Load delivery preferences data
 def load_delivery_preferences_data():
-    delivery_preferences_df = pd.DataFrame({
+    return pd.DataFrame({
         'User ID': [1, 2, 3, 4, 5],
         'Delivery Address': ['123 Main St, Toronto', '456 Maple Ave, Vancouver',
                              '789 Pine Rd, Montreal', '101 Oak St, Calgary',
@@ -57,12 +43,10 @@ def load_delivery_preferences_data():
                                    'Thursday', 'Wednesday and Saturday',
                                    'Monday, Tuesday, Thursday, Saturday']
     })
-    return delivery_preferences_df
 
-# Function to preprocess delivery preferences data
+# Preprocess delivery preferences data
 def preprocess_delivery_preferences_data(delivery_preferences_df):
     ordinal_encoder = OrdinalEncoder()
-
     encoded_delivery_preferences_data = delivery_preferences_df.copy()
 
     encoded_delivery_preferences_data['Delivery Frequency'] = ordinal_encoder.fit_transform(encoded_delivery_preferences_data[['Delivery Frequency']])
@@ -70,96 +54,94 @@ def preprocess_delivery_preferences_data(delivery_preferences_df):
    
     return encoded_delivery_preferences_data
 
-# Function to load recipe preferences data
+# Load recipe preferences data
 def load_recipe_preferences_data():
-    recipe_preferences_df = pd.DataFrame({
+    return pd.DataFrame({
         'User ID': [1, 2, 3, 4, 5],
         'Preferred Category': ['Salads', 'Meats', 'Seafood', 'Vegan', 'International Dishes'],
         'Most Requested Recipes': ['Quinoa Salad, Caesar Salad', 'BBQ Burger, Teriyaki Chicken',
                                    'Grilled Salmon, Shrimp Ceviche', 'Fruit Smoothie, Garbanzo Bowl',
                                    'Chicken Curry, Sushi Rolls']
     })
-    return recipe_preferences_df
 
-# Function to preprocess recipe preferences data
+# Preprocess recipe preferences data
 def preprocess_recipe_preferences_data(recipe_preferences_df):
     label_encoder = LabelEncoder()
-    
     encoded_recipe_preferences_data = recipe_preferences_df.copy()
 
     encoded_recipe_preferences_data['Preferred Category'] = label_encoder.fit_transform(encoded_recipe_preferences_data['Preferred Category'])
     
     return encoded_recipe_preferences_data
 
+# Extract favorite recipes
 def get_favorite_recipes(user_interaction_df):
-    # Favorite Recipes Count
-    favorite_recipes = user_interaction_df['Favorite Recipes'].str.split(', ', expand=True).stack().reset_index(level=1, drop=True).to_frame('Recipe')
+    favorite_recipes = user_interaction_df['Favorite Recipes'].str.split(', ').explode().reset_index(drop=True)
     return favorite_recipes
 
-def get_prefered_days(delivery_preferences_df):
-    # Preferred Delivery Days
-    preferred_days = delivery_preferences_df['Preferred Delivery Day'].str.split(', ', expand=True).stack().reset_index(level=1, drop=True).to_frame('Day')
-    return preferred_days
+# Extract preferred delivery days
+def get_preferred_delivery_days(delivery_preferences_df):
+    preferred_delivery_days = delivery_preferences_df['Preferred Delivery Day'].str.split(', ').explode().reset_index(drop=True)
+    return preferred_delivery_days
 
+# Extract most requested recipes
 def get_most_requested_recipes(recipe_preferences_df):
-    # Most Requested Recipes
-    most_requested_recipes = recipe_preferences_df['Most Requested Recipes'].str.split(', ', expand=True).stack().reset_index(level=1, drop=True).to_frame('Recipe')
+    most_requested_recipes = recipe_preferences_df['Most Requested Recipes'].str.split(', ').explode().reset_index(drop=True)
     return most_requested_recipes
 
-def get_merged_data(encoded_user_interaction_data, encoded_delivery_preferences_data, encoded_recipe_preferences_data):
-    # Merge encoded dataframes based on 'User ID'
-    merged_data = pd.merge(encoded_user_interaction_data, encoded_delivery_preferences_data, on='User ID')
-    merged_data = pd.merge(merged_data, encoded_recipe_preferences_data, on='User ID')
+# Merge all processed data
+def merge_data(user_interaction_df, delivery_preferences_df, recipe_preferences_df):
+    merged_data = pd.merge(user_interaction_df, delivery_preferences_df, on='User ID')
+    merged_data = pd.merge(merged_data, recipe_preferences_df, on='User ID')
 
-    # Convert 'Last Purchase' to numeric (days since a reference date)
     merged_data['Last Purchase'] = pd.to_datetime(merged_data['Last Purchase'])
     merged_data['Last Purchase'] = (merged_data['Last Purchase'] - merged_data['Last Purchase'].min()).dt.days
 
-    # Drop columns 'Most Requested Recipes' and 'Delivery Address'
-    columns_to_drop = ['Most Requested Recipes', 'Delivery Address']
-    merged_data = merged_data.drop(columns=columns_to_drop, errors='ignore')
+    merged_data.drop(columns=['Most Requested Recipes', 'Delivery Address'], inplace=True, errors='ignore')
 
     return merged_data
 
-def get_merged_data_corr(merged_data):
-    return merged_data.corr()
+# Initialize Dash app
+app = Dash(__name__, external_stylesheets=[dbc.themes.MINTY, dbc.icons.FONT_AWESOME], suppress_callback_exceptions=True)
+app.title = "AutoBasket Data Dashboard"
 
-def init_data():
-    user_interaction_df = load_user_interaction_data()
-    delivery_preferences_df = load_delivery_preferences_data()
-    recipe_preferences_df = load_recipe_preferences_data()
+# adds  templates to plotly.io
+load_figure_template(["minty", "minty_dark"])
 
-    favorite_recipes = get_favorite_recipes(user_interaction_df)
-    most_requested_recipes = get_most_requested_recipes(recipe_preferences_df)
-    preferred_days = get_prefered_days(delivery_preferences_df)
-    
-    encoded_user_interaction_data = preprocess_user_interaction_data(user_interaction_df)
-    encoded_delivery_preferences_data = preprocess_delivery_preferences_data(delivery_preferences_df)
-    encoded_recipe_preferences_data = preprocess_recipe_preferences_data(recipe_preferences_df)
+# Initialize data
+user_interaction_df = load_user_interaction_data()
+encoded_user_interaction_df = preprocess_user_interaction_data(user_interaction_df)
 
-    merged_data = get_merged_data(encoded_user_interaction_data, encoded_delivery_preferences_data, encoded_recipe_preferences_data)
-    corr = get_merged_data_corr(merged_data)
+delivery_preferences_df = load_delivery_preferences_data()
+encoded_delivery_preferences_df = preprocess_delivery_preferences_data(delivery_preferences_df)
 
-init_data()
+recipe_preferences_df = load_recipe_preferences_data()
+encoded_recipe_preferences_df = preprocess_recipe_preferences_data(recipe_preferences_df)
 
-# Initialize the Dash app with Bootstrap theme
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+merged_data = merge_data(encoded_user_interaction_df, encoded_delivery_preferences_df, encoded_recipe_preferences_df)
 
-# Define the layout using Bootstrap components for better styling and responsiveness
+color_mode_switch =  html.Span(
+    [
+        dbc.Label(className="fa fa-moon", html_for="color-mode-switch"),
+        dbc.Switch( id="color-mode-switch", value=False, className="d-inline-block ms-1", persistence=True),
+        dbc.Label(className="fa fa-sun", html_for="color-mode-switch"),
+    ]
+)
+
+# Define layout
 app.layout = dbc.Container([
-    html.H1("AutoBasket Data Dashboard", className="my-4 text-center"),  # Adjust margin and alignment
+    html.H1("AutoBasket Data Dashboard", className="my-4 text-center"),
     
     dcc.Tabs(id='tabs', children=[
         dcc.Tab(label='User Interaction Data', children=[
             dbc.Row([
                 dbc.Col(dcc.Graph(
                     id='sessions-vs-time',
-                    figure=px.scatter(user_interaction_df, x='Sessions Initiated', y='Average Time per Session (min)', color='User ID')
-                ), md=6),  # Adjust column size for responsiveness
+                    figure=px.scatter(encoded_user_interaction_df, x='Sessions Initiated', y='Average Time per Session (min)', color='User ID')
+                ), md=6),
                 
                 dbc.Col(dcc.Graph(
                     id='favorite-recipes-count',
-                    figure=px.bar(favorite_recipes['Recipe'].value_counts().reset_index(), x='count', y='Recipe', labels={'index': 'Recipe', 'Recipe': 'Count'}, title='Favorite Recipes Count')
+                    figure=px.bar(get_favorite_recipes(user_interaction_df).value_counts().reset_index(), x='Favorite Recipes', y='count', labels={'index': 'Recipe', 'Favorite Recipes': 'Count'}, title='Favorite Recipes Count')
                 ), md=6),
             ]),
         ]),
@@ -168,12 +150,12 @@ app.layout = dbc.Container([
             dbc.Row([
                 dbc.Col(dcc.Graph(
                     id='delivery-frequency-distribution',
-                    figure=px.chistogram(delivery_preferences_df, x='Delivery Frequency', title='Delivery Frequency Distribution')
+                    figure=px.histogram(encoded_delivery_preferences_df, x='Delivery Frequency', title='Delivery Frequency Distribution')
                 ), md=6),
                 
                 dbc.Col(dcc.Graph(
                     id='preferred-delivery-days',
-                    figure=px.bar(preferred_days['Day'].value_counts().reset_index(), x='count', y='Day', labels={'index': 'Day', 'Day': 'Count'}, title='Preferred Delivery Days')
+                    figure=px.bar(get_preferred_delivery_days(delivery_preferences_df).value_counts().reset_index(), x='Preferred Delivery Day', y='count', labels={'index': 'Day', 'Preferred Delivery Day': 'Count'}, title='Preferred Delivery Days')
                 ), md=6),
             ]),
         ]),
@@ -182,12 +164,12 @@ app.layout = dbc.Container([
             dbc.Row([
                 dbc.Col(dcc.Graph(
                     id='most-requested-recipes',
-                    figure=px.bar(most_requested_recipes['Recipe'].value_counts().reset_index(), x='count', y='Recipe', labels={'index': 'Recipe', 'Recipe': 'Count'}, title='Most Requested Recipes')
+                    figure=px.bar(get_most_requested_recipes(recipe_preferences_df).value_counts().reset_index(), x='Most Requested Recipes', y='count', labels={'index': 'Recipe', 'Most Requested Recipes': 'Count'}, title='Most Requested Recipes')
                 ), md=6),
                 
                 dbc.Col(dcc.Graph(
                     id='preferred-category-distribution',
-                    figure=px.histogram(recipe_preferences_df, x='Preferred Category', title='Preferred Category Distribution')
+                    figure=px.histogram(encoded_recipe_preferences_df, x='Preferred Category', title='Preferred Category Distribution')
                 ), md=6),
             ]),
         ]),
@@ -201,13 +183,37 @@ app.layout = dbc.Container([
                 
                 dbc.Col(dcc.Graph(
                     id='correlation-matrix',
-                    figure=px.imshow(corr, text_auto=True, title='Correlation Matrix')
+                    figure=px.imshow(merged_data.corr(), text_auto=True, title='Correlation Matrix')
                 ), md=6),
             ]),
         ]),
     ]),
-], fluid=True)  # Use fluid container for full-width layout
+], fluid=True)
+
+@callback(
+    Output("graph", "figure"),
+    Input("color-mode-switch", "value"),
+)
+
+def update_figure_template(switch_on):
+    # When using Patch() to update the figure template, you must use the figure template dict
+    # from plotly.io  and not just the template name
+    template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
+
+    patched_figure = Patch()
+    patched_figure["layout"]["template"] = template
+    return patched_figure
+
+clientside_callback(
+    """
+    (switchOn) => {
+       document.documentElement.setAttribute('data-bs-theme', switchOn ? 'light' : 'dark');  
+       return window.dash_clientside.no_update
+    }
+    """,
+    Output("color-mode-switch", "id"),
+    Input("color-mode-switch", "value"),
+)
 
 if __name__ == '__main__':
-    
     app.run_server(debug=True)

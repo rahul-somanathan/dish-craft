@@ -65,3 +65,4 @@ def recommend(user_id: int):
         "recommended_recipes": recommended_recipes,
         "past_rated_recipes": past_rated_recipes
     }
+
